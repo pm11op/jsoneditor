@@ -1,0 +1,1343 @@
+/**
+ * todo
+ *
+ * * saving history - current edited json save for cookie or SharedObject
+ */
+
+(function($){
+    $(function(){
+	    $.KeyBind.init();
+	    $('#read').click($.Event.onRead);
+	    $('#btnNew').click($.Control.create);
+
+	    $('#text').click(function(){
+		    $('#text').removeClass('close').addClass('open');
+		});
+
+	    // 4 mouse
+	    $("#display").click(function(e){
+		    var target = $(e.target);
+
+		    // Safari -> div,  Firefox -> li
+		    if (target.attr('tagName') == 'LI') {
+			var currentId =  Math.max(0, $().xfind("//li[contains(@class, 'open')]").index(target[0]));
+			$.Control._setCurrent(currentId, target);
+			//console.log($.Control, target);
+			$.Control.toggle();
+
+		    } else if (target.attr('tagName') == 'DIV' && target.hasClass('line')) {
+			var currentId =  Math.max(0, $().xfind("//li[contains(@class, 'open')]").index(target.parent()[0]));
+//			console.log([currentId, target.parent().attr('className'), target[0], target.parent()[0]]);
+
+			$.Control._setCurrent(currentId, target.parent());
+			//console.log($.Control, target);
+			$.Control.toggle();
+			
+		    } else if (target.attr('tagName') == 'SPAN') {
+			$.Control.edit(target);
+		    }
+		});
+
+	    // actionList, current line focus
+	    $('#display').mouseover(function(e){
+		    var target = $(e.target);
+		    if (!target.hasClass('actionList') && target.attr('id') != 'actionList') {
+			$('#actionList').hide();
+		    }
+		});
+
+	    
+	    $('#actionList').mouseover(function(e){
+		    var target = $(e.target);
+		    if (target.attr('tagName') == 'LI') {
+			target.addClass('focusedAction');
+			target.one('mouseout', function(){target.removeClass('focusedAction')});
+		    }
+		});
+
+
+	    /**
+	     * onsubmit
+	     */
+	    $('#form').submit(function(){
+		    $.Control.edited();
+		    return false;
+		});
+    
+    
+	    /**
+	     * 
+	    $('#helpClose').click(function(){
+		    $.Control.help();
+		});
+	    */
+	    $('#help').click(function(){
+		    $.Control.help();
+		});
+
+	    
+	    /**
+	     * for slider
+	     */
+	    $.Event.slideMaxValue = $().width();
+	    $('div#navi').each(function () {
+		    var obj = { 
+			handle: '.handle',
+			minValue: 0, 
+			maxValue: $.Event.slideMaxValue,
+			slide: $.Event.onSlide,
+			stop: $.Event.onSlideStop
+		       
+		    };
+		    $.Event.slider = $('#slider', this).slider(obj);
+	    });
+	    $(window).resize(function(){
+		    $.Event.actionMargin = 16;
+		    $.Event.slideMaxValue = $().width();
+
+		    $.Event.onSlideStop();
+		});
+
+	    // read config
+	    $.Control.readConfig();
+
+	    // read contents or json
+	    var href = window.location.hash;
+	    href = href.replace(/^#/, '');
+	    switch (href) {
+	    case 'help':
+	    case 'about':
+		var url = './' + href + '/index.html';
+		$.Control.popup.call($.Control, href, url);
+		break;
+
+	    case 'demo':
+//		window.location.hash = 'editor';
+		$('#text').attr('value', JSON.stringify(demo_data)); //in js/demodata.js
+		$.Control.read();
+		break;
+
+	    case '':
+		$.Control.read();
+		break;
+	    }
+
+	    // menu
+	    $('#menu').click($.Event.onMenuClick);
+
+//	    $('#helpDummy').height(300);
+	}); // end of onload
+
+	$.Event = new function() {
+		this.slideMaxValue = '';
+		this.slider = '';
+		this.onRead = function() {
+		    $('#text').addClass('close').removeClass('open');
+		    var data = $('#text').attr('value');
+		    if (!data) $.Event.actionMargin = 16;
+		    try {
+			$.Msg.hide();
+			$.Jsone.read(data||'{}');
+		    } catch(e) {
+			$.Msg.show('MSG_INVALID_DATA', 'error');
+			//            throw(e);
+		    }
+		    if (!$('.btnPublish').length) {
+			var btn = "<input type='button' value='publish (p)' class='btnPublish' />";
+			$('#control').append(btn);
+			$('.btnPublish').click(function(){
+				$.Control.publish();
+			    });
+			
+			var btnXML = "<input type='button' value='publish as XML (x)' class='btnPublishXML' />";
+			$('#control').append(btnXML);
+			$('.btnPublishXML').click(function(){
+				$.Control.publishXML();
+			    });
+		    }
+
+
+		    if (this.blur) this.blur();
+		};
+		this.actionMargin = 16;//$.browser.msie ? 16 : 31;
+		this.handleMargin = 150;
+
+		this.onSlide = function(ev, ui) {
+		    $.Event.onSlideStop(ev, ui);
+		    return;
+		    if (!ev) return;
+		    if ($(ev.target).attr('id') == 'handle1') {
+			$('span.value').css('left', ui.value +'px');
+		    } else if ($(ev.target).attr('id') == 'handle2') {
+			$('span.value').width(parseInt(ui.value, 10) - parseInt($('#handle1').css('left'), 10)+'px');
+			var action = $('div.action');
+			action.width($.Event.slideMaxValue - parseInt(ui.value, 10) - parseInt(action.css('right'), 10)-33 +'px');
+//			console.log($.Event.slideMaxValue+'px');
+		    }
+		};
+
+		this.onSlideStop = function(ev, ui) {
+		    $.Event.hideActionList();
+		    if (!ev && !ui) {  // usercall
+
+			var handles = [{handle:$('#handle1')},{handle:$('#handle2')}];
+			$.each(handles, function(){
+				this.value = parseInt(this.handle.css('left'), 10);
+			    });
+//			console.log(handles)
+
+			$.Event.onSlideStop({}, handles[0]);
+//			$.Event.onSlideStop({}, handles[1]);
+			return;
+		    }
+		    if (ui.handle.attr('id') == 'handle1') {
+			var w = $.Event.slideFix(ui.handle, $('#handle2'), ui.handle);
+		    } else {
+			var w = $.Event.slideFix($('#handle1'), ui.handle, ui.handle);
+		    }
+
+		    $('#handle1').css('left', w[0]);
+		    $('#handle2').css('left', w[1]);
+		    $('span.value').css('left', Math.round(w[0]+1) +'px').width(w[1] - w[0] +'px');
+
+		    var action = $('div.action');
+		    action.width($.Event.slideMaxValue - w[1]-1 - parseInt(action.css('right'), 10) 
+				 - $.Event.actionMargin  +'px');
+//		    console.log($.Event.slideMaxValue,  w[1]-1,  parseInt(action.css('right'), 10), $.Control.helpVisibility*$.Control.helpWidth)
+		};
+		
+
+		/**
+		 * margin < handle1 < handle2 < width - margin
+		 */
+		this.slideFix = function(main, sub, self) {
+		    var pos=[], p = function(v) {return parseInt(v, 10)};
+		    var max = p($().width()) - $.Control.helpVisibility*$.Control.helpWidth - $.Event.handleMargin,
+		    pos1 = p(main.css('left')), pos2 = p(sub.css('left'));
+   		    if (max - pos2 < $.Event.handleMargin) {
+			pos2 = max - $.Event.handleMargin;
+			if (pos2 - pos1 < $.Event.handleMargin) pos1 = pos2 - $.Event.handleMargin; 
+		    }
+
+		    
+		    pos[0] = Math.min(Math.max(pos1, $.Event.handleMargin),
+				      p($().width()) - $.Control.helpVisibility*$.Control.helpWidth - $.Event.handleMargin*2);
+
+		    pos[1] = Math.max(Math.min(pos2, max),
+				      p(main.css('left')), $.Event.handleMargin*2);
+
+//		    console.log(pos2, max,
+//				      p(main.css('left')), $.Event.handleMargin*2);
+
+//		    console.log(p(sub.css('left')), p($().width()) -
+//					       $.Control.helpVisibility*$.Control.helpWidth - $.Event.handleMargin,
+//		    p(main.css('left')), $.Event.handleMargin*2, '');
+
+		    // handle1 <<< handle2
+//		    console.log('pos1',pos);
+		    if (main == self) {
+			if (pos[0] + $.Event.handleMargin > pos[1]) pos[1] = pos[0] + $.Event.handleMargin;
+		    } else {
+			if (pos[0] + $.Event.handleMargin > pos[1]) pos[0] = pos[1] - $.Event.handleMargin;
+		    }
+//		    console.log(pos);
+
+		    $.Control.saveConfig();
+		    return pos;
+		};
+		
+		this.hideActionList = function() {
+		    $('#actionList').hide();
+		};
+
+		/**
+		 * line focus
+		 */
+		this.onFocusLine = function(e){
+		    var target = $(e.target);
+		    while (!target.hasClass('line')) target = target.parent();
+		    
+		    target.addClass('focusedLine');
+		    target.one('mouseout', function(e){
+			    try{
+				var targetEx = $(e.relatedTarget);
+			    } catch(e) { // nativescrollbar
+				target.removeClass('focusedLine');
+				return;
+			    }
+			    var callee = arguments.callee;
+			    
+			    if (targetEx.attr('id') == 'actionList' || targetEx.hasClass('actionMenu')) {
+				targetEx.one('mouseout', function(e){
+					callee.call({}, e);
+					//						console.log(callee)
+					//						target.removeClass('focusedLine');
+				    });
+			    } else {
+				target.removeClass('focusedLine');
+			    }
+			});
+		};
+
+		this.onMenuClick = function(e){
+		    var href = $(e.target).attr('href');
+		    if (!href) return;
+		    href = href.replace(/^#/, '');
+		    switch(href) {
+		    case 'new':
+		        $.Control.create.call($.Control);
+ 		        break;
+		    case 'shortcut':
+		        $.Control.help.call($.Control);
+ 		    break;
+
+		    default:
+			var url = './' + href + '/index.html';
+			$.Control.popup.call($.Control, href, url);
+			break;
+
+		    }
+		};
+
+	    }; // end of Event
+    
+	$.Jsone = new function() {
+		this.nullValue = jQuery.browser.msie ? "" : ' ';
+		this.read = function(text) {
+		    if (this.isXML(text)) {
+			var obj = this.parseXML(text), len=0;;
+			for (var key in obj) {
+			    len++;
+			}
+
+			if (len == 1) {
+			    this.rootNode = key;
+			    this.jsonObj = obj[key];
+			} else {
+			    this.rootNode = 'xml';
+			    this.jsonObj = obj;
+			}
+
+		    } else {
+			this.rootNode = 'json';
+			this.jsonObj = JSON.parse(text, function(key, value){
+				if (value == null) value = '';
+				return value;
+			    });
+		    }
+		    this.id = 0;
+		    this.display.call(this);
+		    $.Control.init();
+
+		    $.Msg.show('MSG_READ');
+		    
+		};
+
+		this.isXML = function(text){
+		    return text.indexOf('<?xml') > -1;
+		}
+
+		    this.parseXML = function(text) {
+			return new XML.ObjTree().parseXML(text);
+		    }
+
+			this.count = function () {
+			    return this.id;
+			};
+		//this.delBtn = "<input type='button' value='x' class='btnDel' />";
+		this.delBtn = "<img src='./images/del.gif' class='btnDel' alt='delete' />";
+		this.editBtn = "<img src='./images/edit.gif' class='btnEditable' alt='edit' />";
+		this.insertBtn = "<img src='./images/insert.gif' class='btnInsert' alt='insert' />";
+		this.copyBtn = "<img src='./images/insert.gif' class='btnCopy' alt='copy' />";
+//		this.actionDiv = "<div class='action'>" + this.editBtn + this.delBtn + this.insertBtn + this.copyBtn + "</div>";
+		this.actionList = "<div class='actionList'><img src='./images/action.gif' class='actionList' /></div>";
+		this.actionDiv = "<div class='action'>" + this.editBtn + this.delBtn + this.actionList + "</div>";
+
+//		this.actionDivKey = "<div class='action'>" + this.insertBtn + this.copyBtn + "</div>";
+		this.actionDivKey = "<div class='action'>" + this.actionList + "</div>";
+
+		this.childFormat = "<li id='item_%s' class='open'><div class='line'><span class='key'>%s</span><span class='value'>%s</span>" +
+		    this.actionDiv + "</div></li>\n";
+
+		this.childKeyFormat = "<li id='item_%s' class='open'><div class='line'><span class='key'>%s</span><span class='value'>" + this.nullValue + "</span>" + this.actionDiv +
+		    "</div></li>\n";
+
+		this.buildHtml = function() {
+		    this._html = '';
+		    var self = this;
+		    $.each(this.jsonObj, function(key){
+			    $.Jsone.id++;
+			    id = $.Jsone.id;
+			    switch($.Jsone.findType(this)){
+			    default:
+				$.Jsone._html += sprintf(self.childFormat, id, key, $.trim($().escape(this)) || ' ');
+				//$.Jsone._html += String(key) + ' : ' + this;
+				break;
+			    case Object:
+			    case Array:
+				$.Jsone._html += "<li id='item_" + id + "' class='open'><div class='line'><span class='key'>" + String(key) + '</span>' +
+//				    "<span class='value'>" + $.Jsone.nullValue + "</span><div class='action'>" + self.editBtn + self.delBtn + self.insertBtn + self.copyBtn + "</div>" +
+                    "<span class='value'>" + $.Jsone.nullValue + "</span><div class='action'>" + self.editBtn + self.delBtn + self.actionList + "</div>" +
+				    "</div><ul> ";
+				$.each(this, arguments.callee);
+				$.Jsone._html += ' </ul></li>';
+				break;
+			    }
+			});
+		    return this._html;
+		};
+        
+		this.display = function() {
+            var parentFormat = '<div id="dummy"><span class="key">&nbsp;</span><span class="value">&nbsp;</span><div class="action">&nbsp;</div></div>'
+		    parentFormat += "<ul><li id='root' class='open'><div class='line'><span class='key'>" + $.Jsone.rootNode + "</span>" + 
+		    "<span class='value'>" + this.nullValue + "</span>" + this.actionDivKey + "</div><ul>%s</ul></li></ul>\n";
+		    
+		    $('#display').html(sprintf(parentFormat, this.buildHtml()));
+		    this.setBtn();
+
+		    // slide
+		    $.Event.slideMaxValue = $().width();
+		    $.Event.onSlideStop();
+		};
+        
+		this.setBtn = function(){
+		    // delete
+		    $.Jsone._makeAction('click', $('.btnDel'), function(item, e){
+			    $.Control.del($(e.target).parent().parent().parent());
+			});
+
+		    // edit
+		    $.Jsone._makeAction('click', $('.btnEditable'), function(item, e){
+			    var target = $(e.target).parent().parent().parent();
+			    var currentId = Math.max(0, $().xfind("//li[contains(@class, 'open')]").index(target[0]));
+			    $.Control._setCurrent(currentId, target);
+			    $.Control.edited();
+			    $.Control.edit();
+			});
+
+		    /**
+		     * action list
+		     */
+		    $('.actionList').unbind('mouseover');
+		    $('.actionList').mouseover(function(e){
+			    //console.log(e)
+			    $.Jsone.makeActionList(e.target);
+			    return;
+			});
+
+		    var actions = {
+			'.actionEditable': 'edit',
+			'.actionDel': 'del',
+			'.actionInsert': 'insert',
+			'.actionInsertKey': 'insertKey',
+			'.actionInsertChild': 'insertAsChild',
+			'.actionInsertChildKey': 'insertKeyAsChild',
+			'.actionInsertValue': 'insertValue'
+			
+		    };
+		    $.each(actions, function(key){
+			    var self = this;
+			    $.Jsone._makeAction('click', $(key), function(item){
+				    $.Control[self].call($.Control);
+				});
+			});
+		    
+
+		    /**
+		     * mouse over
+		     */		    
+		    $('div.line').mouseover($.Event.onFocusLine);
+
+		};
+
+		this._makeAction = function(event, target, action, obj){
+		    target.unbind(event);
+		    target[event](function(e){
+   			    var item =  $.Jsone._actionTarget;
+			    var currentId = Math.max(0, $().xfind("//li[contains(@class, 'open')]").index(item[0]));
+			    $.Control._setCurrent(currentId, item);
+			    $.Event.hideActionList();
+			    action.call(this, item, e);
+			});
+		};
+
+		this.alMargin = 50;
+		this.makeActionList = function(target){
+	    
+		    this._actionTarget = $(target).parent().parent().parent(),
+		    pos = $(target).offset();
+//		    console.log(this._actionTarget)
+		    
+		    var style = {position: 'absolute', left: parseInt(pos.left, 10) + $.Jsone.alMargin, top: pos.top};
+		    var actions = $('#actionList').css(style).show().children('ul').children();
+
+		    var item = $(target).parent().parent();
+		    actions.show();
+		    if ($.Control.isRoot(item)) {
+			$('.actionDel').add('.actionInsertKey').add('.actionInsert').add('.actionInsertValue').hide();
+		    } else if (this._actionTarget.children().size() != 2 && !$.trim($(item.children()[1]).text())) {
+//			actions.show();
+		    } else if (this._actionTarget.children().size() != 2) {
+			$('.actionInsertChildKey').add('.actionInsertChild').add('.actionInsertValue').hide();
+		    } else {
+			$('.actionInsertValue').hide();
+		    }
+		};
+        
+		this.findType = function(val){
+		    //console.log([typeof val, val.length, val.prototype, val.constructor]);
+		    return val.constructor;
+		};
+		var _key = '';
+
+		this.parseHtml = function(root) {
+		    root = root || $('#root')
+
+		    var _parse = function(items, obj){
+			if (!obj) {
+			    obj={};
+			    obj.__thisObjectIsArray = 1;
+			}
+			
+			var elm = $(items[0]), key;
+
+			if (elm.attr('className') == 'line') {
+			    // has children?
+			    var tmp = [];
+			    if (items.length > 1) {
+				tmp = items[1];
+			    }
+
+			    items = $.makeArray(elm.children()).concat(tmp);
+
+			    tmp = '';
+			    elm = $(items[0]);
+			}
+
+			if (items.length > 1 && elm.attr('className') == 'key'){
+			    key = $.trim(elm.text()) || '';
+
+			    var val = $(items[1]);
+
+			    if (items.length > 3) {
+				obj[key] = arguments.callee.call($.Jsone, $(items[3]).children(), obj[key]);
+				if (!key.match(/^[0-9]*$/)) obj.__thisObjectIsArray = 0;
+				return obj;
+			    }
+			    if (val.attr('className') == 'value'){
+				_key = '';
+				obj[key] = $.trim(val.text()) || null;
+				if (!key.match(/^[0-9]*$/)) obj.__thisObjectIsArray = 0;
+				return obj;
+			    }
+
+			    
+			    return obj;
+			}
+                
+
+			var length = items.length;
+			for (var i=0; i<length; i++) {
+			    elm = $(items[i]);
+			    if (elm.attr('className') == 'key'){
+				_key = elm.text();
+
+			    }
+
+			    if (_key) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        				obj[_key] = arguments.callee.call($.Jsone, $(items[i]).children(), obj[_key]);
+			    } else {
+				obj = arguments.callee.call($.Jsone, $(items[i]).children(), obj);
+			    }
+			}
+			//                console.log(obj);
+			return obj;
+			};
+		    var obj =  _parse(root, {});
+		    obj = this._makeArray(obj);
+		    return obj;
+		    //            console.log(this.jsonObj);
+		};
+
+		this._makeArray = function(obj) {
+		    if (!obj) return obj;
+		    var _array = 0, parsedObj;
+		    if (obj.__thisObjectIsArray) {
+			parsedObj = [];
+			_array = 1;
+		    } else {
+			parsedObj = {};
+		    }
+
+		    delete obj.__thisObjectIsArray;
+		    for (var key in obj) {
+			if (typeof obj[key] == 'object') obj[key] = arguments.callee.call(this, obj[key]);
+			if (_array) {
+			    parsedObj.push(obj[key]);
+			} else {
+			    parsedObj[key] = obj[key];
+			}
+		    }
+
+		    return parsedObj;
+		};
+		
+		this.publish = function() {
+		    // cause null publish
+		    $('.focusedLine').removeClass('focusedLine');
+		    
+		    this.jsonObj = this.parseHtml.call(this);
+		    var obj = JSON.stringify(this.jsonObj[$.Jsone.rootNode]);
+		    //console.log(obj);
+		    
+		    $('#text').attr('value', obj);
+		    $.Msg.show('MSG_PUBLISH');
+	    
+		    $.scrollTo(0, 0);
+		};
+
+		this.publishXML = function() {
+		    this.jsonObj = this.parseHtml.call(this);
+		    $('#text').attr('value', new XML.ObjTree().writeXML(this.jsonObj));
+		    $.Msg.show('MSG_PUBLISHXML');
+
+		    $.scrollTo(0, 0);
+		};
+        
+	    }
+
+	$.Msg = new function(){
+		this.show = function(msg, className) {
+		    className = className || 'action';
+		    msg = this._message(msg);
+
+		    var type = '';
+		    if (className == 'action') type = 'undo';
+		    if (className == 'undo') type = 'redo';
+		    this.setUndo(msg, type);
+		    $('#message').attr('className', '').addClass(className + 'Msg');
+		};
+
+		this.setUndo = function(msg, type) {
+		    type = type || 'undo';
+		    msg += '<a href="" class="' + type + 'Action" >' + this._message('MSG_RE' + type.toUpperCase()) + '</a>';
+		    $('#message').html(msg);
+		    
+		    $('.' + type + 'Action').one('click', function(){
+			    $.Control[type].call($.Control);
+			    return false;
+			});
+		};
+		
+		this.hide = function() {
+		    $('#message').html('');
+		};
+
+		this._message = function(key){
+		    var msg = this._msg[key] || key;
+		    return msg;
+		};
+
+		this._msg = {
+		    'MSG_PUBLISH': 'JSON を出力しました',
+		    'MSG_COPIED': 'ノードをコピーしました',
+		    'MSG_PUBLISHXML': 'XML で出力しました',
+		    'MSG_CHANGED': 'ツリーを更新しました',
+		    'MSG_DELETED': '削除しました',
+		    'MSG_REDO': 'やり直しました',
+		    'MSG_UNDO': 'とり消しました',
+		    'MSG_REREDO': 'やり直し',
+		    'MSG_REUNDO': 'とり消し',
+		    'MSG_READ': 'データ読み込みました',
+		    'MSG_NEW': '新規作成',
+		    'MSG_INVALID_DATA': '不適切なデータです'
+		};
+	    }
+
+	$.Control= new function() {
+		this.init = function() {
+		    this.current = false;
+		    this.currentId = 0;
+		    this.target = false;
+		    this._bufferMaxlength = 5;
+		    this._buffer = [];
+		    this._bufferRedo = [];
+	        
+//		    this._helpHeight = $('#help').height()
+
+		    // cache items
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		};
+		this.formatEdit = "<input type='text' value='%s' style='width: %sem;' /><input type='button' value='OK' class='btnEdit' />";
+		this.formatEditValue = "<textarea class='insert'>%s</textarea><input type='button' value='OK' class='btnEdit' />";
+		this.formatEditValueSpan = "<span class='value'><textarea class='insert'>%s</textarea><input type='button' value='OK' class='btnEdit' /></span>";
+//		this.formatEditKey = "<textarea style='display: none;' class='insert'>%s</textarea><input type='button' style='display: none;' value='OK' class='btnEdit' />";
+		this.formatEditKey = '%s';
+        
+		this.next = function() {
+		    var rule = function(items){
+			if (this.current) {
+			    return items.length > this.currentId+1 ? this.currentId+1 : 0;  
+			}
+			return 0;
+		    }
+		    $.Control._jump.call(this, rule);
+		};
+
+		this.prev = function() {
+		    var rule = function(items){
+			if (this.current) {
+			    return this.currentId >0 ? this.currentId-1 : items.length-1;
+			}
+			return 0;
+		    }
+		    $.Control._jump.call(this, rule);
+		};
+
+		this.hide = function(){
+		    targetChildren = $().xfind("//li[contains(@class, 'current')]//li");
+		    if (targetChildren.parent().addClass('hideParent').end().addClass('hide').removeClass('open').size()) { 
+			$().xfind("//li[contains(@class, 'current')]").addClass('hideList');; 
+		    }
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		};
+		    
+		this.grow = function(){
+		    $().xfind("//li[contains(@class, 'current')]//li").addClass('open').
+		    removeClass('hide').removeClass('hideList').parent().removeClass('hideParent');
+		    
+		    $().xfind("//li[contains(@class, 'current')]").removeClass('hideList'); 
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		};
+
+		this.toggle = function() {
+		    this.edited(nomsg=true);
+		    targetParent = $().xfind("//li[contains(@class, 'current')]");
+		    if(targetParent.hasClass('hideList')) {
+			this.grow();
+		    } else {
+			this.hide();
+		    }
+		};
+
+		this._textAreaMaxWidth = 400;
+		this._textAreaMinWidth = 100;
+		this._textAreaMargin = 50;
+		this.isDummyValue = function(target){
+		    if (!target || !target.hasClass('value')) return false;
+//		    console.log(target, target.parent().parent().children());
+		    if (target.parent().parent().children().length > 1) {
+			return true;
+		    }
+		    return false;
+
+		};
+
+		this.getTextareaSize = function(){
+		    var width = parseInt($('span.value').width(), 10) - this._textAreaMargin;
+		    width = Math.max(Math.min(this._textAreaMaxWidth, width), this._textAreaMinWidth);
+
+		    return width;
+		};
+		
+		this.edit = function(target){
+		    if (this.isDummyValue(target)) {
+			return false;
+		    }
+		    this.edited();
+		    this.remember();
+		    
+		    var self = this;
+		    var _edit = function(){
+			var elm = $(this);
+			var text = elm.text();
+			if (elm.hasClass('key')) {
+			    elm.html(sprintf(self.formatEdit, text, Math.max(3, Math.min(text.length, 30))));
+			    self.setHeightEdit.call(self, true, 'key');
+			} else {
+			    elm.html(sprintf(self.formatEditValue, text));
+
+			    // size
+			    $().xfind("//span[@class='value']/textarea").width(self.getTextareaSize.call(self));
+			    self.setHeightEdit.call(self, true);
+			}
+			$('.btnEdit').click(function(){
+				self.edited.call(self);
+				$('.focusedLine').removeClass('focusedLine');
+			    });
+
+
+		    }
+		    if (target) {
+			// set as current
+			this._jump(function() {
+				return self.items.index($(target).parent().parent()[0]);
+			    });
+			_edit.call(target);
+			return false;
+		    }
+		    var children = $().xfind("//li[contains(@class,'current')]/div/span");
+
+
+		    // if current item is key and value pair
+		    if (children.length > 1 && $(children[1]).attr('className') == 'value' && this.current.children().size()==1) {
+			$.each(children, _edit);
+			this._forcus();
+			return false;
+		    }
+		    _edit.call(children[0]);
+		    this._forcus();
+		    $.Jsone.setBtn();
+		    return false;
+		};
+
+		/**
+		 * change height for textarea in editing list
+		 */
+		this.setHeightEdit = function(nowEditing, type){
+		    if (!this.current) return;
+
+		    if (nowEditing) {
+			switch (type) {
+			case 'key':
+			    this.current.children('.line').addClass('editingKey');
+			    break;
+			default: 
+			    this.current.children('.line').addClass('editing').removeClass('editingKey');
+			    break;
+			}			
+		    } else {
+			$().xfind('//div[contains(@class, "editing")]').removeClass('editing');
+			$().xfind('//div[contains(@class, "editingKey")]').removeClass('editingKey');
+		    }
+		};
+
+		/**
+		 * var @nomsg boolean true->no message shown
+		 */
+		this.edited = function(nomsg){
+		    $().xfind("//input[contains(@class, 'btnEdit')]").unbind('click').hide();
+		    
+		    var children = $.makeArray($().xfind("//input[contains(@type, 'text')]")).
+		    concat($.makeArray($().xfind("//textarea[contains(@class, 'insert')]")));
+		    var self = this;
+		    $.each(children, function(){
+			    var type = $(this).parent().attr('class'), dummy;
+			    var text = $(this).attr('value')|| '';
+			    
+			    if (type == 'value' && text.match(/[\{\[]/)) {
+				try {
+				    $.Jsone.jsonObj = JSON.parse(text);
+				    var typeOf = $.Jsone.jsonObj.constructor;
+				    if (typeOf == Array) typeOf = 'array';
+				    else if (typeOf == Object) typeOf = 'object';
+				    else typeOf = '';
+//				    $(this).parent().parent().attr('type', typeOf);
+//				    text = $.Jsone.actionDivKey + "<ul>" + $.Jsone.buildHtml() + "</ul>";
+				    text = "<ul>" + $.Jsone.buildHtml() + "</ul>";
+
+				    dummy = "<span class='value'>" + $.Jsone.nullValue + "</span>" + $.Jsone.actionDivKey;
+				    
+				    $().xfind("//li[contains(@class, 'current')]/div/div").remove();
+				    $(this).parent().replaceWith(dummy);
+//				    console.log(self.current)
+				    self.current.append(text);
+
+				    
+				} catch(e) {
+				    $.Jsone.jsonObj = text;
+				}
+				return;
+			    }
+			    
+			    var html = $().escape($.trim(text)) || ' ';
+
+			    // this line cause crash? 
+			    $(this).parent().html(html);
+			});
+		    this.setHeightEdit.call(this);
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		    if (!nomsg) {
+			$.Msg.show('MSG_CHANGED');
+		    }
+
+		};
+        
+		/**
+		 * @var rule function would return targetId  
+		 * items must be cached
+		 */
+		this._jump = function(rule) {
+		    var targetId = 0;
+		    if (!$.Jsone.count()) this.current = false, rule = function(){return 0;}
+		    
+		    //var items = $().xfind("//li[contains(@class, 'open')]");
+		    var items = this.items;
+		    if (!items) return;
+		    rule = rule || function(){return 0;}
+		    targetId = rule.call(this, items);
+		    if (!items[targetId]) return;
+		    this.target = $(items[targetId]);
+		    $.Control._scroll.call(this, targetId);
+		};
+
+		this._scrollMargin = [100, 150];
+		this._scroll = function(id) {
+		    var d = document;
+		    var x = d.body.scrollLeft || d.documentElement.scrollLeft;
+		    var y = d.body.scrollTop  || d.documentElement.scrollTop;
+		    var w = window.innerWidth || d.documentElement.clientWidth || d.body.clientWidth ;
+		    var h = window.innerHeight || d.documentElement.clientHeight || d.body.clientHeight;
+		    var pos = this.target.offset();
+//		    var helpHeight = this._helpHeight * $.Control.helpVisibility;
+//		    h = Math.max(0, h-helpHeight);
+		    
+		    //scroll
+		    pos.top = parseInt(pos.top, 10);
+		    if (pos.top - y > h - this._scrollMargin[1]) {
+			$.scrollTo(0, pos.top - h + this._scrollMargin[1]);
+		    } else if (pos.top - y < this._scrollMargin[0]) {
+			$.scrollTo(0, pos.top-this._scrollMargin[0]);
+		    }
+            
+		    //console.log([this.target, this.target.offset(), x, y, w, h])
+		    this._setCurrent.call(this, id, this.target);
+		};
+
+		    
+		this._setCurrent = function(id, target){
+		    target.addClass('current').children('div').addClass('curLine');
+			
+		    //alert([this.current, target])
+		    if (this.current && this.current[0] != target[0]) {
+			this.current.removeClass('current').children('div').removeClass('curLine');
+		    }
+		    this.current = target;
+		    this.currentId = id; 
+		};
+			
+		this.publish = function(){
+		    $.Jsone.publish();
+		    $('#text').removeClass('close').addClass('open');
+		};
+			    
+		this.publishXML = function(){
+		    $.Jsone.publishXML();
+		    $('#text').removeClass('close').addClass('open');
+		};
+
+        
+		this.copy = function() {
+		    // id would be doubled but id not use anywhere... umm..
+		    var closure = function(id, current) {
+			var elm = current;
+		    
+
+			var format  = "<li id='item_%s' class='open'>%s</li>";
+			var html = sprintf(format, id, elm.html());
+		    
+			if (this.isRoot()) $().xfind('id("root")/ul').append(html);
+			else elm.after(html);
+		    };
+		    this._insert(closure, nomsg=true);
+		    $.Msg.show('MSG_COPIED', 'undo');
+		};
+		    
+		this.insert = function(keyOnly) {
+		    var closure = function(id, current) {
+			var _key='', _value='';
+
+			var key = sprintf(this.formatEdit, _key, 5);
+			var value = keyOnly ? sprintf(this.formatEditKey, '') : sprintf(this.formatEditValue, _value);
+			var html = keyOnly ? sprintf($.Jsone.childKeyFormat, id, key, value) : sprintf($.Jsone.childFormat, id, key, value);
+
+			if (this.isRoot()) $().xfind('id("root")/ul').append(html);
+			else current.after(html);
+		    };
+		    this._insert(closure);
+
+		    this.setHeightEdit.call(this, true, keyOnly ? 'key' : null);
+		};
+
+		this.insertKey = function() {
+		    this.insert(keyOnly=true);
+		    return;
+		};
+
+		this._insert = function(method, nomsg) {
+		    this.remember();
+
+   
+		    $.Jsone.id++;
+		    id = $.Jsone.id;
+
+		    if (!this.current) this.current = $('#root'), this.currentId = 0;
+
+		    method.call(this, id, this.current);
+
+		    // size
+		    $().xfind("//span[@class='value']/textarea").width($.Control.getTextareaSize.call($.Control));
+		    
+		    // slide
+		    $.Event.slideMaxValue = $().width();
+		    $.Event.onSlideStop();
+		    
+		    var self = this;            
+		    $('.btnEdit').click(function(e){
+			    self.edited.call(self, nomsg);
+			    $('.focusedLine').removeClass('focusedLine');
+			});
+
+		    this._forcus();
+		    
+		    $.Jsone.setBtn();
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+
+		    // set as current
+		    var self = this;
+		    this._jump(function() {
+//			    console.log(self.items, $('#item_' + id), self.items.index($('#item_' + id)[0]), id);
+			    return self.items.index($('#item_' + id)[0]);
+			});
+		};
+
+
+		this.insertAsChild = function(keyOnly) {
+		    // if current has value already, nothing will happen.
+		    if ($.trim($().xfind('//li[contains(@class, "current")]/div/span[@class="value"]').text())) {
+			$.Msg.show('MSG_CANT_DO');
+			return;
+		    }
+
+		    var closure = function(id, current) {
+			var _key='', _value='', target;
+		    
+			var key = sprintf(this.formatEdit, _key, 5);
+			var value = keyOnly ?  sprintf(this.formatEditKey, '') : sprintf(this.formatEditValue, _value);
+//			var html = sprintf($.Jsone.childFormat, id, key, value);
+
+			var html = keyOnly ? sprintf($.Jsone.childKeyFormat, id, key, value) : sprintf($.Jsone.childFormat, id, key, value);
+
+			
+			// children exists already
+			if (current.children().size() > 1 ) {
+			    target = $(current.children()[1]);
+			    target.append(html);
+			} else {
+			    var format = "<ul>%s</ul>";
+			    target = current;
+			    target.append(sprintf(format, html));
+			}
+			$().xfind('//li[contains(@class, "current")]/div/span[@class="value"]').children().css('display', 'none');
+			//			console.log(target)
+
+			    
+		    };
+		    this._insert(closure);
+		    this.setHeightEdit.call(this, true, keyOnly ? 'key' : null);
+		};
+		this.insertKeyAsChild = function() {
+		    this.insertAsChild(keyOnly=true);
+		};
+		
+		this.insertValue = function() {
+		    // if current has value already, nothing will happen.
+		    if ($('.current span.value textarea').size() || this.isRoot() || this.current.children().size() > 1) {
+			$.Msg.show('MSG_CANT_DO');
+			return;
+		    }
+		    var closure = function(id, current) {
+			var value = $().xfind("//li[contains(@class,'current')]//span[@class='value']");
+			if (!value.size()) {
+			    var valueNode = sprintf(this.formatEditValueSpan, '');
+			    $().xfind("//li[contains(@class,'current')]//span[@class='key']").after(valueNode);
+			} else {
+			    var valueNode = sprintf(this.formatEditValue, value.text());
+			    value.html(valueNode);
+			}
+//			console.log(valueNode)
+		    };
+		    this._insert(closure);
+		    this.setHeightEdit.call(this, true);
+
+		};
+
+		this._forcus = function(type) {
+		    type = type || "//input[contains(@type, 'text')]";
+		    setTimeout(function(){
+			    var obj = $().xfind(type);
+			    if (obj.size() && obj[0].focus) try {obj[0].focus();} catch(e) {}
+			}, 500);
+
+		};
+
+
+		this.test = function(){
+//		    console.log('test!');
+		};
+		    
+		this.del = function(target){
+		    if (this.isRoot(target)) return false;
+		    this.remember();
+		    target = target ? target : $().xfind("//li[contains(@class, 'current')]");
+		    this.currentId = Math.max(0, $().xfind("//li[contains(@class, 'open')]").index(target[0])-1);
+		    target.remove();
+		    $.Msg.show('MSG_DELETED');
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		    this.next();
+		};
+		    
+		this.isRoot = function(target) {
+		    //	    console.log([target, this.currentId]);
+		    if ((!target && !this.currentId) || (target && target.parent().attr('id') == 'root')) return true;
+		    return false;
+		};
+		    
+		this.helpVisibility = false;
+		
+		this.helpWidth = 250;
+		this.sliderPos = [];
+		this.helpMargins = [200, 300];
+		this.help = function() {
+		    $.Event.hideActionList();
+
+		    this.helpVisibility = !this.helpVisibility;
+		    if (this.helpVisibility) {
+			$('#help').animate({width:(250-215*(!this.helpVisibility)) + 'px'}, 200, '', function(){
+				$('#innerHelp dd').toggle();
+			    });
+		    } else {
+			$('#innerHelp dd').toggle();
+			$('#help').animate({width:(250-215*(!this.helpVisibility)) + 'px'}, 200);
+		    }
+		    
+		    $('#content').animate({width:parseInt($().width(), 10) - this.helpWidth*this.helpVisibility+ 'px'}, 200);
+
+		    // slider
+
+		    var action = $('div.action');
+		    var handles = [$('#handle1'), $('#handle2')];
+
+
+		    if (this.helpVisibility) {
+			this.sliderPos = [handles[0].css('left'), handles[1].css('left')];
+
+			
+						
+			if (parseInt($().width(''), 10) < this.helpWidth + parseInt(handles[1].css('left'), 10) + this.helpMargins[0]) {
+			    handles[1].css('left', parseInt($().width(), 10) - this.helpWidth - this.helpMargins[0]);
+//			    handles[1].animate({left: parseInt($().width(), 10) - this.helpWidth - this.helpMargins[0]}, 200);
+//			    console.log(parseInt($().width(), 10) - this.helpWidth - 300);
+			}
+			if (parseInt($().width(), 10) < this.helpWidth + parseInt(handles[0].css('left'), 10) + this.helpMargins[1]) {
+			    handles[0].css('left', parseInt($().width(), 10) - this.helpWidth - this.helpMargins[1]);
+//			    handles[0].animate({left: parseInt($().width(), 10) - this.helpWidth - this.helpMargins[1]}, 200);
+			}
+		    } else {
+//			console.log(this.sliderPos)
+			var self = this;
+			$.each(handles, function(key){
+				this.css('left', self.sliderPos[key]);
+			    });
+		    }
+
+		    $.Event.onSlideStop(null, {value: handles[0].css('left'), handle: handles[0]});
+		    $.Event.onSlideStop(null, {value: handles[1].css('left'), handle: handles[1]});
+
+		    $.Control.saveConfig();
+		};
+        
+		this.remember = function(undo, noClearRedo){
+		    var target = undo ?  this._bufferRedo : this._buffer;
+		    
+		    if (target.length >= this._bufferMaxlength) target.shift(); 
+		    target.push($.Jsone.parseHtml()[$.Jsone.rootNode]);
+		    if (!noClearRedo) {
+			this._bufferRedo = [];
+		    }
+		};
+
+		this.redo = function(){
+		    if (!this._bufferRedo.length) return;
+		    this.remember(undo=false, noClearRedo=true);
+		    $.Jsone.jsonObj = this._bufferRedo.pop();
+		    $.Jsone.display();
+		    
+		    $.Msg.show('MSG_REDO', 'action');
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		};
+
+		this.read = function() {
+		    $.Event.onRead();
+		};
+		    
+		this.undo = function(){
+		    if (!this._buffer.length) return;
+		    this.remember(undo=true, noClearRedo=true);
+		    $.Jsone.jsonObj = this._buffer.pop();
+		    $.Jsone.display();
+		    $.Msg.show('MSG_UNDO', 'undo');
+		    this.items = $().xfind("//li[contains(@class, 'open')]");
+		};
+
+		/**
+		 * when create execute, handle2 would be little to left side...
+		 */
+		this.create = function(){
+		    if ($('#text').attr('value') && !window.confirm('The Editing data will be *lost*. Do you really create a new one?')) {
+			return;
+		    }
+		    $('#text').attr('value', '');
+
+		    $.Event.actionMargin = 16;
+		    $.Control.read();
+		    $.Control.next();
+		    $.Msg.show('MSG_NEW');
+		};
+
+		/**
+		 * save config
+		 */
+		this.saveConfig = function(){
+		    $.cookie('handle1', $('#handle1').css('left'));
+		    $.cookie('handle2', $('#handle2').css('left'));
+		    $.cookie('help', $.Control.helpVisibility+1);
+		};
+
+		this.readConfig = function() {
+		    $('#handle1').css('left', $.cookie('handle1'));
+		    $('#handle2').css('left', $.cookie('handle2'));
+		    if ($.cookie('help') == 2) $.Control.help();
+		    
+//		    $.Event.onSlideStop();
+		};
+
+		this.popup = function(title, url) {
+		    var height = $(window).height()*0.75, width = $(window).width()/2;
+		    tb_show(title, url + '?width='+ width + '&height=' + height);
+		};
+		
+		this.init();
+	    }
+
+	$.KeyBind = new function() {
+		this.keys = {
+		    a: 'create',
+		    j: 'next',
+		    k: 'prev',
+		    down: 'next',
+		    up: 'prev',
+		    'delete': 'del',
+		    s: 'toggle',
+		    e: 'edit',
+		    i: 'insert',
+		    n: 'insertKey',
+		    I: 'insertAsChild',
+		    N: 'insertKeyAsChild',
+		    m: 'insertValue',
+		    c: 'copy',
+		    r: 'read',
+		    p: 'publish',
+		    x: 'publishXML',
+		    z: 'undo',
+		    y: 'redo',
+		    1: function(){$('#text').removeClass('close').addClass('open');},
+		    2: function(){$('#text').removeClass('open').addClass('close');},
+		    h: 'help'
+		};
+		this.keyInfo = {
+		    a: 'a new one',
+		    j: 'next item',
+		    k: 'prev item',
+		    d: 'delete current item',
+		    s: 'toggle',
+		    e: 'edit current item',
+		    i: 'insert Key & Value pair',
+		    n: 'insert Key',
+		    I: 'insert Key & Value pair as a child',
+		    N: 'insert Key as a child',
+		    m: 'insert Value',
+		    c: 'copy current item',
+		    r: 'read from textarea',
+		    p: 'publish by JSON format',
+		    x: 'publish by XML format',
+		    z: 'undo',
+		    y: 'redobb',
+		    1: 'make textarea size large',
+		    2: 'make textarea size small',
+		    h: 'show help'
+		};
+		this.init = function() {
+		    // draw help
+		    var html='',img,
+		    format = "<dl>%s</dl>",
+		    formatLine = "<dt style='background-image:url(./images/shortcut/%s.gif);'>%s</dt><dd>%s</dd>";
+		    
+		    $.each(this.keyInfo, function(key){
+			    if (key.toUpperCase() == key) img = key + '_u';
+			    else img = key;
+			    html += sprintf(formatLine, img, key, this);
+			});
+		    $('#innerHelp').html(sprintf(format, html));
+		    
+		    // key bind
+			kb = new HotKey;
+			$.each($.KeyBind.keys, function(key){
+				var self = this;
+				kb.add(key, 
+				       typeof self == 'function' ? self : function(e) {
+					   $.Control[self] ? $.Control[self]() : 
+					       function(){/*console.log('no such method : ' + self)*/}();
+					   if (e.preventDefault) {
+					       e.preventDefault();
+					       e.stopPropagation();
+					   }
+					   return false;
+				       }
+				       );
+			    });
+		    };
+	    }
+
+	$.scrollTo = function(x, y) {
+        var scr = window.scroll||window.scrollTo;
+	scr(x, y);
+
+    }
+
+
+    $.fn.extend({
+	    escape: function(text){
+		var d = document;
+		var div = d.createElement('div');
+		var txt=d.createTextNode(text);
+		div.appendChild(txt);
+		//d.removeChild(div);
+		text = div.innerHTML;
+		return text;
+	    }
+	});
+
+
+    function sprintf(){
+	var format = Array.prototype.shift.apply(arguments);
+	var args   = arguments;
+	var i=0;
+	return format.replace(/%s/g, function(){
+		return args[i++];
+	    });
+    }
+
+})(jQuery);
+
+
+
+
+// override thickbox
+function tb_position() {
+    $("#TB_window").css({marginLeft: '-' + parseInt((TB_WIDTH / 2),10) + 'px', width: TB_WIDTH + 'px'});
+    if ( !(jQuery.browser.msie && jQuery.browser.version < 7)) { // take away IE6
+	$("#TB_window").css({marginTop: '-' + parseInt((TB_HEIGHT / 2),10) + 'px'});
+    }
+    $('#download').load('./app/soft/', true);
+}

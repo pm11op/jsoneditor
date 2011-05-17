@@ -1,0 +1,615 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-size:.8em;
+}
+
+.current {
+}
+
+.curLine {
+    background-color: #ff0;
+}
+
+.curLine .value, .curLine .action{
+    background-color: #ff0;
+}
+
+.editing div.line {
+    height: 93px;
+}
+
+.editing, .editing span.value, .editing div.action{
+    height: 100px;
+}
+
+.editingKey div.line {
+    height: 25px;
+}
+
+.editingKey, .editingKey span.value, .editingKey div.action{
+    height: 32px;
+}
+
+div#content, div#header, div#footer{
+    /*margin: 20px;*/
+}
+
+#header li{
+  list-style-image: none;
+  font-size: 1.2em;
+  padding: 0;
+}
+
+
+ul, #root{
+   padding-top:0;
+   margin-top:0;
+}
+ul{
+   padding-left:14px;
+}
+#display li {
+   color: #000;
+   /*padding-top:.65em;*/
+   list-style-image: url(../images/minus.png);
+
+}
+#display li img {
+   display: block;
+   float: left;
+   clear: left;
+}
+
+
+
+/**
+--------------------------------
+  Headr Menu
+--------------------------------
+*/
+div#header
+{
+  margin:0 0 0 26px;
+  width: 90%;
+}
+h1{
+  float:left;
+}
+div#menu
+{
+  float: right;
+
+
+}
+div#menu ul
+{
+  margin: 20px 0 0 0;
+  width: 357px;
+  background: transparent url(../images/menu_background.gif) no-repeat;
+  padding: 0;
+  float: left;
+}
+
+div#menu li
+{
+  display:inline;
+  float:left;
+  height:12px;
+  text-indent: -3000px;
+  margin-right:10px;
+  margin-left: 11px;
+}
+div#menu ul li a{
+  height:13px;
+  display:block;
+  overflow: hidden;
+}
+
+div#menu ul li#menu_new a
+{
+  width:51px;
+  background: transparent url(../images/menu_new.gif) no-repeat;
+}
+
+div#menu ul li#menu_shortcut a
+{
+  width: 98px;
+  background: transparent url(../images/menu_shortcut.gif) no-repeat;
+}
+div#menu ul li#menu_help a
+{
+  width: 53px;
+  background: transparent url(../images/menu_help.gif) no-repeat;
+}
+div#menu ul li#menu_about a
+{
+  width: 61px;
+  background: transparent url(../images/menu_about.gif) no-repeat;
+}
+div#menu ul li#menu_new a:hover, div#menu ul li#menu_shortcut a:hover, div#menu ul li#menu_help a:hover, div#menu ul li#menu_about a:hover
+{
+  background-position: 0 -13px;
+
+}
+
+div#air{
+  float: left;
+  clear: none;
+  text-indent: -3000px;
+  margin: 10px 0 0 10px;
+}
+div#air a{
+  width: 100px;
+  height: 25px;
+  display: block;
+  background: transparent url(../images/airversion.gif) no-repeat;
+}
+
+
+
+
+
+div#formarea
+{
+  width: 90%;
+  margin: 0 0 20px 26px;
+}
+#formarea textarea
+{
+
+  border:1px solid #ccc;
+  wrap: soft;
+  
+}
+#text.open{
+
+/*    height: 300px;*/
+  width:100%;
+    height: 300px;
+}
+#text.close{
+  width:100%;
+  height: 50px;
+}
+#read
+{
+  margin:15px 0 0 0;
+}
+
+
+
+
+/**
+-----------------------------
+  HELP style
+-----------------------------
+*/
+
+div#help {
+	margin: 0;
+	padding: 0 0 0 10px;
+    height: 100%;
+    width: 20px;
+
+    position: fixed; /* !important;
+    position: absolute;*/
+    right: -1px;
+    top: 0;
+  background: transparent url(../images/shortcut_background.png) repeat-y;
+    z-index: 5000;
+}
+div#help div.background
+{
+  background-color: #FF3363;
+  height: 100%;
+  margin:0;
+  padding:0;
+  cursor: pointer;
+}
+#outerHelp {
+
+    z-index: 5001;
+}
+div#innerHelp {
+	margin: 0;
+	padding: 0px;
+	
+    background-color: #FF3363;
+    white-space:nowrap;
+    z-index: 5002;
+}
+#innerHelp dl{
+  margin:0;
+  padding: 10px 0 0 0;
+}
+#innerHelp dd {
+    display: none;
+}
+#innerHelp dt {
+    float: left;
+    clear: both;
+    padding: 0 5px 5px 0;
+    width: 15px;
+    margin: 0;
+    font-weight: bold;
+    white-space: nowrap;
+    background-repeat: no-repeat;
+    text-indent: -10000px;
+    
+
+    /*border: solid 1px #666;*/
+}
+#innerHelp dd {
+  margin-left: 10px;
+  padding: 0 5px 5px 0;
+  width: 150px;
+  color: #fff;
+    /*border: solid 1px #666;*/
+}
+
+
+/**
+--------------------------
+  Infoarea
+--------------------------
+*/
+#infoarea {
+  margin: 0;
+
+  position: fixed;
+  bottom: 0px;
+  width: 100%;
+    /*background-color: #CFD4E6;*/
+  z-index: 10000;
+  background-image:url(../images/footer_background.png);
+  background-repeat: repeat-x;
+}
+div#message {
+  margin:10px 0 0 0;
+  padding-left:10px;
+  height: 20px;
+  width: 100%;
+  color: #fef;
+  background-color:#0079CE;
+}
+#message a {
+  margin-left: 15px;
+  color:#fef;
+}
+
+#copyright {
+    position: fixed !important;
+    position: absolute;
+    right: 20px;
+    bottom: 1px;
+
+    text-indent: -3000px;
+    width: 44px;
+    margin: 20px 0 0 0;
+}
+#copyright a
+{
+  display: block;
+  background: transparent url(../images/copyright.gif) no-repeat;
+}
+
+
+
+
+
+#footer {
+    height: 100px;
+}
+
+#helpClose {
+    float: right;
+    padding-right: 50px;
+    cursor: pointer;
+    display: none;
+}
+
+
+
+
+
+
+
+
+div#display
+{
+  padding:0 0 0 32px;
+  background-color: #f6f6f6;
+}
+
+div#display_bottom
+{
+  width:100%;
+  border-top: 1px solid #ccc;
+}
+div#display ul
+{
+  margin-bottom:0;
+}
+span.value{
+   /*border: solid 1px #666;*/
+   text-align: left;
+   position: absolute;
+   left: 300px;
+   width: 500px;
+   overflow: hidden;
+   background-image:url(../images/separator.gif);
+   background-repeat: repeat-y;
+
+   padding-left:10px;
+   padding-bottom:.8em;
+
+   /* Safari send &nbsp; as \u0A00, so ' ' was used. */
+   white-space: pre;
+
+   /*border:1px solid #ccc;*/
+   background-color: #f6f6f6;
+
+   /* hide overflow-y  */
+
+
+}
+
+#slider span.value,#slider div.action{
+	padding: 6px 0 6px 5px;
+}
+#slider span.key{
+	display:block;
+	float: left;
+	padding: 6px 0 0 0;
+}
+
+span.key{
+	/* this element is inline
+  width: 300px;
+  overflow: hidden;
+  padding:0 25px 0 0;
+  */
+   /* Safari send &nbsp; as \u0A00, so ' ' was used. */
+   white-space: pre;
+}
+div.action{
+    /*border: solid 1px #666;*/
+    display: inline;
+    clear: right;
+    position: absolute;
+    right: 0px;
+    width: 240px;
+    background:#f6f6f6 url(../images/separator.gif) repeat-y;
+    padding: 0 0 .8em 5px;
+
+
+}
+div.action .btnDel, div.action .btnEditable, div.action div.actionList{
+  text-indent: -3000px;
+  padding: 0;
+  margin: 0 0 0 5px;
+  float: left;
+  clear: none;
+  display: inline;
+  width: 15px;
+	cursor: pointer;
+
+/*    padding: 5px 5px 0;
+
+    margin: 0 5px;
+    cursor: pointer; 
+    display: inline;
+    float: left;
+    clear: none;
+    text-indent: -3000px;
+*/
+}
+
+div.actionList p.actionList {
+	display: inline;
+	cursor: pointer;
+
+	margin: 0 0 0 5px;
+	background: transparent url(../images/action.gif) no-repeat;
+	white-space: pre;
+	width: 60px;
+}
+div.action div.actionList
+{
+	cursor: pointer;
+	width: 60px;
+	background: transparent url(../images/action.gif) no-repeat;
+	white-space: pre;
+}
+.focusedLine div.action div.actionList {
+  background:url(../images/action_active.gif) no-repeat;
+}
+.btnDel{
+    background: url(../images/del.gif) no-repeat;
+
+}
+
+.btnEditable{
+    background: url(../images/edit.gif) no-repeat;
+}
+
+.focusedLine .btnDel{
+    background: url(../images/del_active.gif) no-repeat;
+}
+
+.focusedLine .btnEditable{
+    background: url(../images/edit_active.gif) no-repeat;
+}
+
+
+.hide {
+    display: none;
+}
+#display li.hideList{
+   list-style-image: url(../images/plus.png);
+}
+
+/* textarea */
+.insert{
+   width: 400px;
+   height: 80px;
+}
+
+textarea
+{
+  border: solid 1px #666;
+  font-size:small;
+}
+
+.line input[type='button'] {
+  width: 40px;
+}
+
+.line
+{
+text-align: left;
+	padding-bottom: .8em;
+}
+
+.focusedLine {
+  background-color: #FFFCCA;
+}
+
+.focusedLine .value, .focusedLine .action{
+  background-color: #FFFCCA;
+}
+
+/* slider */
+#navi .key{
+  margin-left:18px;
+}
+#navi .value{
+/*    background-image: none;*/
+
+    margin: 0;
+   line-height: 1.2em;
+}
+
+#navi .action{
+/*    background-image: none;*/
+
+}
+#navi {
+    margin: 0;
+    padding: 0;
+}
+
+div#actionList {
+  display: none;
+  width: 120px;
+  background:transparent url(../images/actionlist_header.png) no-repeat;
+  padding:8px 0 0 0;
+}
+#actionList ul{
+  background:transparent url(../images/actionlist_background.png) repeat-y;
+  margin:0;
+  padding:0;
+}
+#actionList li{
+  list-style: none;
+  padding: 5px 0 5px 5px;
+  margin:0 5px 0 5px;
+  font-size: 10px;
+  text-indent: -3000px;
+}
+#actionList div.footer
+{
+  background:transparent url(../images/actionlist_footer.png) no-repeat;
+  height: 10px;
+}
+
+
+
+
+
+
+
+div#actionList li.actionEditable
+{
+  background:transparent url(../images/action_edit.gif) no-repeat 3px 5px;
+}
+div#actionList li.actionDel
+{
+  background:transparent url(../images/action_cut.gif) no-repeat 3px 5px;
+}
+
+div#actionList li.actionCopy
+{
+  background:transparent url(../images/action_duplicate.gif) no-repeat 3px 5px;
+}
+
+div#actionList li.actionPaste
+{
+  background:transparent url(../images/action_paste.gif) no-repeat 3px 5px;
+}
+
+div#actionList li.actionInsert
+{
+  background:transparent url(../images/action_insert.gif) no-repeat 3px 5px;
+}
+div#actionList li.actionInsertKey
+{
+  background:transparent url(../images/action_insertkey.gif) no-repeat 3px 5px;
+}
+div#actionList li.actionInsertValue
+{
+  background:transparent url(../images/action_insertvalue.gif) no-repeat 3px 5px;
+}
+div#actionList li.actionInsertChild
+{
+  background:transparent url(../images/action_insertchild.gif) no-repeat 3px 5px;
+}
+div#actionList li.actionInsertChildKey
+{
+  background:transparent url(../images/action_insertchildkey.gif) no-repeat 3px 5px;
+}
+div#actionList li.focusedAction {
+  background-color:#fff;
+}
+
+
+
+#popup {
+    display: none;
+}
+
+
+div#dummy
+{
+
+  margin: 0;
+  padding: 0;
+  padding-bottom:.65em;
+  height:25px;
+  background-color: #f6f6f6;
+}
+div#dummy div
+{
+  height:25px;
+}
+div#dummy span
+{
+  height:25px;
+}
+
+#control
+{
+  padding: 10px 0 20px 20px;
+  background-color: #f1f1f1;
+}
+#control input
+{
+  margin-left:10px;
+}
+#helpDummy {
+  height: 25px;
+  background-color: #f1f1f1;
+}
+
+
